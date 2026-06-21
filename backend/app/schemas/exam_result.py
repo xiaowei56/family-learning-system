@@ -122,7 +122,7 @@ class ExamResultResponse(BaseModel):
 class TrendDataPoint(BaseModel):
     """趋势数据点"""
 
-    date: date = Field(..., description="考试日期")
+    exam_date: date = Field(..., description="考试日期")
     score_rate: float = Field(..., description="得分率")
     score: float = Field(..., description="得分")
     total_score: float = Field(..., description="满分")

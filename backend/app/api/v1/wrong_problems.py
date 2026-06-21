@@ -20,6 +20,7 @@ from app.schemas.wrong_problem import (
     AIEvaluationResponse,
     AutoCollectRequest,
     AutoCollectResponse,
+    OCRRequest,
     OCRResponse,
     SolutionRequest,
     SolutionResponse,

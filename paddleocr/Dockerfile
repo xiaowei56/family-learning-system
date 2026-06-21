@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir \
     flask==3.0.3 \
     gunicorn==22.0.0 \
-    paddleocr==2.9.1 \
-    -i https://mirror.baidu.com/pypi/simple
+    paddleocr==2.9.1
 
 # 创建应用目录
 WORKDIR /app

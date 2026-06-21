@@ -4,6 +4,8 @@
 所有配置项优先从环境变量读取，提供合理默认值（内网开发环境）。
 """
 
+from typing import Any
+
 from pydantic_settings import BaseSettings
 
 
@@ -37,9 +39,14 @@ class Settings(BaseSettings):
     jwt_expiration_hours: int = 24
 
     # ─── CORS ───────────────────────────────────────
-    cors_origins: list[str] = ["*"]  # 内网环境，允许所有来源
+    cors_origins: str = "*"  # 逗号分隔或单个域名；内网环境默认放通所有
 
     model_config = {"env_file": ".env", "case_sensitive": False}
+
+    def get_cors_origins(self) -> list[str]:
+        """将 cors_origins 字符串解析为列表"""
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return origins if origins else ["*"]
 
 
 settings = Settings()
