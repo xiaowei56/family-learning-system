@@ -1,7 +1,7 @@
 # PaddleOCR 服务镜像
 # 基于 PaddlePaddle CPU 镜像，封装为 REST API 供主应用调用
 
-FROM registry.baidubce.com/paddlepaddle/paddle:3.0.0rc0-cpu
+FROM paddlepaddle/paddle:3.0.0rc0
 
 LABEL maintainer="family-learning-system"
 
@@ -16,7 +16,6 @@ RUN pip install --no-cache-dir \
     flask==3.0.3 \
     gunicorn==22.0.0 \
     paddleocr==2.9.1 \
-    paddlepaddle==3.0.0rc0 \
     -i https://mirror.baidu.com/pypi/simple
 
 # 创建应用目录
