@@ -15,6 +15,11 @@ from pydantic import BaseModel, Field
 class SimilarProblemGenerateRequest(BaseModel):
     """生成相似题请求体"""
 
+    student_id: Optional[str] = Field(
+        None,
+        description="所属学生 ID",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
     source_problem_id: Optional[str] = Field(None, description="来源错题 ID")
     subject: str = Field(..., max_length=50, description="科目")
     knowledge_point: str = Field(..., max_length=200, description="知识点")
@@ -34,6 +39,7 @@ class SimilarProblemResponse(BaseModel):
     """相似题响应体"""
 
     id: str = Field(..., description="相似题 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目")
     knowledge_point: str = Field(..., description="知识点")
     problem_text: str = Field(..., description="相似题目")
@@ -59,6 +65,7 @@ class WeakPointResponse(BaseModel):
     """薄弱点响应体"""
 
     id: str = Field(..., description="记录 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目")
     knowledge_point: str = Field(..., description="知识点")
     mastery_level: float = Field(..., description="掌握程度")
@@ -83,6 +90,11 @@ class WeakPointAnalysisResponse(BaseModel):
 class PracticePaperGenerateRequest(BaseModel):
     """生成练习试卷请求体"""
 
+    student_id: Optional[str] = Field(
+        None,
+        description="所属学生 ID",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
     subject: str = Field(..., max_length=50, description="科目")
     weak_points: list[str] = Field(..., description="针对的薄弱知识点列表")
     question_count: int = Field(10, ge=1, le=50, description="题目数量")
@@ -92,6 +104,7 @@ class PracticePaperResponse(BaseModel):
     """练习试卷响应体"""
 
     id: str = Field(..., description="试卷 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目")
     title: str = Field(..., description="标题")
     questions: list = Field(..., description="题目列表")
@@ -118,6 +131,7 @@ class LearningAdviceResponse(BaseModel):
     """学习建议响应体"""
 
     id: str = Field(..., description="建议 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: Optional[str] = Field(None, description="科目")
     overall_diagnosis: Optional[str] = Field(None, description="总体诊断")
     study_plan: Optional[str] = Field(None, description="学习计划")

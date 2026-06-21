@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.user import User
 from app.models.wrong_problem import WrongProblem
 from app.schemas.wrong_problem import (
@@ -50,6 +50,7 @@ def _problem_to_response(p: WrongProblem) -> WrongProblemResponse:
         solution=p.solution,
         image_path=p.image_path,
         difficulty=p.difficulty,
+        student_id=str(p.student_id) if p.student_id else None,
         wrong_count=p.wrong_count,
         created_at=p.created_at,
         updated_at=p.updated_at,
@@ -95,12 +96,14 @@ def list_wrong_problems(
     knowledge_point: Optional[str] = Query(None, description="知识点筛选"),
     difficulty: Optional[int] = Query(None, ge=1, le=3, description="难度筛选"),
     is_correct: Optional[int] = Query(None, description="是否正确：0=错误，1=正确"),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WrongProblemListResponse:
     """获取当前用户的错题列表。"""
+    verify_student_ownership(student_id, current_user, db)
     query = db.query(WrongProblem).filter(WrongProblem.user_id == current_user.id)
 
     if subject:
@@ -111,6 +114,8 @@ def list_wrong_problems(
         query = query.filter(WrongProblem.difficulty == difficulty)
     if is_correct is not None:
         query = query.filter(WrongProblem.is_correct == is_correct)
+    if student_id:
+        query = query.filter(WrongProblem.student_id == student_id)
 
     total = query.count()
     items = (
@@ -159,8 +164,10 @@ def create_wrong_problem(
     current_user: User = Depends(get_current_user),
 ) -> WrongProblemResponse:
     """手动录入一条错题记录。"""
+    verify_student_ownership(data.student_id, current_user, db)
     problem = WrongProblem(
         user_id=current_user.id,
+        student_id=data.student_id,
         subject=data.subject,
         knowledge_point=data.knowledge_point,
         problem_text=data.problem_text,

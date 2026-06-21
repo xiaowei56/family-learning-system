@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.exam_result import ExamResult
 from app.models.user import User
 from app.schemas.exam_result import (
@@ -35,6 +35,7 @@ def _exam_result_to_response(r: ExamResult) -> ExamResultResponse:
     return ExamResultResponse(
         id=str(r.id),
         user_id=str(r.user_id),
+        student_id=str(r.student_id) if r.student_id else None,
         subject=r.subject,
         exam_type=r.exam_type.value if hasattr(r.exam_type, "value") else r.exam_type,
         score=r.score,
@@ -61,17 +62,21 @@ def _compute_score_rate(score: float, total_score: float) -> float:
     description="获取当前用户的所有考试成绩，支持按科目和考试类型筛选。",
 )
 def list_exam_results(
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     subject: Optional[str] = Query(None, description="科目名称筛选"),
     exam_type: Optional[str] = Query(None, description="考试类型筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ExamResultResponse]:
     """获取当前用户的考试成绩列表。"""
+    verify_student_ownership(student_id, current_user, db)
     query = (
         db.query(ExamResult)
         .filter(ExamResult.user_id == current_user.id)
     )
 
+    if student_id:
+        query = query.filter(ExamResult.student_id == student_id)
     if subject:
         query = query.filter(ExamResult.subject == subject)
     if exam_type:
@@ -101,8 +106,10 @@ def create_exam_result(
     current_user: User = Depends(get_current_user),
 ) -> ExamResultResponse:
     """记录新的考试成绩。"""
+    verify_student_ownership(request.student_id, current_user, db)
     result = ExamResult(
         user_id=current_user.id,
+        student_id=request.student_id,
         subject=request.subject,
         exam_type=request.exam_type,
         score=request.score,
@@ -135,10 +142,12 @@ def get_exam_trend(
         None,
         description="考试类型筛选（可选）",
     ),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TrendResponse:
     """获取得分率趋势图数据。"""
+    verify_student_ownership(student_id, current_user, db)
     subject_list = [s.strip() for s in subjects.split(",") if s.strip()]
 
     series_list: list[TrendSeries] = []
@@ -152,6 +161,8 @@ def get_exam_trend(
         )
         if exam_type:
             query = query.filter(ExamResult.exam_type == exam_type)
+        if student_id:
+            query = query.filter(ExamResult.student_id == student_id)
 
         records = query.order_by(ExamResult.exam_date.asc()).all()
 
@@ -184,14 +195,21 @@ def get_exam_trend(
     description="返回当前用户的科目列表、考试类型列表及各科目最新成绩。",
 )
 def get_exam_summary(
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SummaryResponse:
     """获取考试成绩摘要统计。"""
+    verify_student_ownership(student_id, current_user, db)
+
+    base_filter = [ExamResult.user_id == current_user.id]
+    if student_id:
+        base_filter.append(ExamResult.student_id == student_id)
+
     # 获取所有去重科目
     subjects_q = (
         db.query(ExamResult.subject)
-        .filter(ExamResult.user_id == current_user.id)
+        .filter(*base_filter)
         .distinct()
         .order_by(ExamResult.subject)
         .all()
@@ -201,7 +219,7 @@ def get_exam_summary(
     # 获取所有去重考试类型
     exam_types_q = (
         db.query(ExamResult.exam_type)
-        .filter(ExamResult.user_id == current_user.id)
+        .filter(*base_filter)
         .distinct()
         .order_by(ExamResult.exam_type)
         .all()
@@ -218,6 +236,7 @@ def get_exam_summary(
             .filter(
                 ExamResult.user_id == current_user.id,
                 ExamResult.subject == subject,
+                *(ExamResult.student_id == student_id if student_id else [])
             )
             .order_by(ExamResult.exam_date.desc())
             .first()

@@ -170,6 +170,9 @@ import {
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
 
@@ -192,7 +195,7 @@ const paperDetail = ref(null)
 async function handleAnalyze() {
   analyzing.value = true
   try {
-    const res = await request.post('/v1/weak-points/analyze')
+    const res = await request.post('/v1/weak-points/analyze', null, { params: { student_id: studentStore.currentStudentId || undefined } })
     const data = res?.data || res
     weakPoints.value = data?.weak_points || []
     advice.value = { overall_diagnosis: data.overall_diagnosis, study_plan: data.study_plan }
@@ -211,7 +214,7 @@ async function handleAnalyze() {
 
 async function fetchWeakPoints() {
   try {
-    const res = await request.get('/v1/weak-points')
+    const res = await request.get('/v1/weak-points', { params: { student_id: studentStore.currentStudentId || undefined } })
     weakPoints.value = res?.data || res || []
     if (weakPoints.value.length) hasData.value = true
   } catch { /* ignore */ }
@@ -219,7 +222,7 @@ async function fetchWeakPoints() {
 
 async function fetchAdvice() {
   try {
-    const res = await request.get('/v1/learning-advice')
+    const res = await request.get('/v1/learning-advice', { params: { student_id: studentStore.currentStudentId || undefined } })
     advice.value = res?.data || res
     if (advice.value) hasData.value = true
   } catch { /* ignore */ }
@@ -227,7 +230,7 @@ async function fetchAdvice() {
 
 async function fetchPapers() {
   try {
-    const res = await request.get('/v1/practice-papers', { params: { page_size: 5 } })
+    const res = await request.get('/v1/practice-papers', { params: { page_size: 5, student_id: studentStore.currentStudentId || undefined } })
     papers.value = res?.data?.items || res?.items || []
   } catch { /* ignore */ }
 }
@@ -242,7 +245,8 @@ async function handleGenerate() {
     const res = await request.post('/v1/practice-papers/generate', {
       subject: paperForm.value.subject,
       weak_points: paperForm.value.weak_points,
-      question_count: paperForm.value.question_count
+      question_count: paperForm.value.question_count,
+      student_id: studentStore.currentStudentId || undefined
     })
     const paper = res?.data || res
     ElMessage.success(`试卷生成成功！共 ${paper.total_questions} 题`)

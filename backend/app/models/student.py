@@ -64,6 +64,15 @@ class Student(Base):
 
     # ─── 关系 ────────────────────────────────────────
     user = relationship("User", backref="students")
+    study_records = relationship("StudyRecord", backref="student", lazy="dynamic")
+    review_schedules = relationship("ReviewSchedule", backref="student", lazy="dynamic")
+    exam_results = relationship("ExamResult", backref="student", lazy="dynamic")
+    wrong_problems = relationship("WrongProblem", backref="student", lazy="dynamic")
+    exam_papers = relationship("ExamPaper", backref="student", lazy="dynamic")
+    similar_problems = relationship("SimilarProblem", backref="student", lazy="dynamic")
+    weak_points = relationship("WeakPoint", backref="student", lazy="dynamic")
+    practice_papers = relationship("PracticePaper", backref="student", lazy="dynamic")
+    learning_advices = relationship("LearningAdvice", backref="student", lazy="dynamic")
 
     def __repr__(self) -> str:
         return f"<Student(id={self.id}, name='{self.name}', grade='{self.grade_level}')>"

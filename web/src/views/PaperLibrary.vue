@@ -142,6 +142,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Upload, View, Document, Delete, Picture } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 // ─── 常量 ───
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
@@ -179,6 +182,7 @@ async function fetchPapers() {
     if (filterSubject.value) params.subject = filterSubject.value
     if (filterExamType.value) params.exam_type = filterExamType.value
     if (filterStatus.value) params.status = filterStatus.value
+    params.student_id = studentStore.currentStudentId || undefined
     const res = await request.get('/v1/exam-papers', { params })
     papers.value = res?.data?.items ?? res?.items ?? []
     total.value = res?.data?.total ?? res?.total ?? 0
@@ -221,7 +225,8 @@ async function handleUpload() {
       title: uploadForm.title,
       exam_type: uploadForm.exam_type || null,
       exam_date: uploadForm.exam_date || null,
-      image_path: imagePath
+      image_path: imagePath,
+      student_id: studentStore.currentStudentId || undefined
     })
     ElMessage.success('试卷上传成功')
     showUpload.value = false

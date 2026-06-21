@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.user import User
 from app.models.advanced_analysis import SimilarProblem
 from app.schemas.advanced_analysis import (
@@ -35,6 +35,7 @@ def _to_response(p: SimilarProblem) -> SimilarProblemResponse:
         solution=p.solution,
         difficulty=p.difficulty,
         is_practiced=p.is_practiced,
+        student_id=str(p.student_id) if p.student_id else None,
         created_at=p.created_at,
     )
 
@@ -49,12 +50,14 @@ def list_similar_problems(
     subject: Optional[str] = Query(None, description="科目筛选"),
     knowledge_point: Optional[str] = Query(None, description="知识点筛选"),
     is_practiced: Optional[int] = Query(None, description="练习状态"),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SimilarProblemListResponse:
     """获取当前用户的相似题目列表。"""
+    verify_student_ownership(student_id, current_user, db)
     query = db.query(SimilarProblem).filter(SimilarProblem.user_id == current_user.id)
 
     if subject:
@@ -63,6 +66,8 @@ def list_similar_problems(
         query = query.filter(SimilarProblem.knowledge_point.ilike(f"%{knowledge_point}%"))
     if is_practiced is not None:
         query = query.filter(SimilarProblem.is_practiced == is_practiced)
+    if student_id:
+        query = query.filter(SimilarProblem.student_id == student_id)
 
     total = query.count()
     items = (
@@ -111,6 +116,7 @@ async def generate_similar_problem(
     current_user: User = Depends(get_current_user),
 ) -> SimilarProblemGenerateResponse:
     """调用 LLM 生成一道相似练习题，并保存到数据库。"""
+    verify_student_ownership(data.student_id, current_user, db)
     result = await llm_service.generate_similar_problem(
         problem_text=data.problem_text,
         subject=data.subject,
@@ -122,6 +128,7 @@ async def generate_similar_problem(
     # 保存到数据库
     problem = SimilarProblem(
         user_id=current_user.id,
+        student_id=data.student_id,
         source_problem_id=uuid.UUID(data.source_problem_id) if data.source_problem_id else None,
         subject=data.subject,
         knowledge_point=data.knowledge_point,

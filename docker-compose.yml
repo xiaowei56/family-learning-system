@@ -132,4 +132,4 @@ services:
       - fastapi
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./backend/static:/var/www/static
+      - ./web/dist:/var/www/static

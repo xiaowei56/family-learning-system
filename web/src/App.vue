@@ -66,6 +66,22 @@
             <span class="header-page-title">{{ currentPageTitle }}</span>
           </div>
           <div class="header-right">
+            <!-- 学生切换器 -->
+            <div v-if="studentStore.hasStudents" class="header-student-switcher">
+              <el-select
+                v-model="studentStore.currentStudentId"
+                @change="studentStore.selectStudent"
+                size="small"
+                style="width: 140px"
+              >
+                <el-option
+                  v-for="s in studentStore.students"
+                  :key="s.id"
+                  :label="`${s.name}（${s.grade_level}）`"
+                  :value="s.id"
+                />
+              </el-select>
+            </div>
             <el-dropdown trigger="click" @command="handleCommand">
               <span class="header-user">
                 <el-avatar :size="32" icon="UserFilled" />
@@ -92,13 +108,15 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useStudentStore } from '@/stores/student'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const studentStore = useStudentStore()
 
 const sidebarWidth = ref('var(--sidebar-width)')
 
@@ -112,6 +130,12 @@ function handleCommand(command) {
     router.push('/login')
   }
 }
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    studentStore.fetchStudents()
+  }
+})
 </script>
 
 <style scoped>
@@ -189,6 +213,12 @@ function handleCommand(command) {
 }
 
 .header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-student-switcher {
   display: flex;
   align-items: center;
 }

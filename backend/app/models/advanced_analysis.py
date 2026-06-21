@@ -33,6 +33,13 @@ class SimilarProblem(Base):
         index=True,
         comment="所属用户 ID",
     )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
+    )
     source_problem_id = Column(
         UUID(as_uuid=True),
         ForeignKey("wrong_problems.id", ondelete="SET NULL"),
@@ -118,6 +125,13 @@ class WeakPoint(Base):
         index=True,
         comment="所属用户 ID",
     )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
+    )
     subject = Column(
         String(50),
         nullable=False,
@@ -193,6 +207,13 @@ class PracticePaper(Base):
         nullable=False,
         index=True,
         comment="所属用户 ID",
+    )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
     )
     subject = Column(
         String(50),
@@ -280,6 +301,13 @@ class LearningAdvice(Base):
         nullable=False,
         index=True,
         comment="所属用户 ID",
+    )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
     )
     subject = Column(
         String(50),

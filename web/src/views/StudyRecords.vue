@@ -177,6 +177,9 @@ import { ref, reactive, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 // ─── 科目选项 ───
 const subjectOptions = [
@@ -286,7 +289,9 @@ function formatDate(dateStr) {
 async function fetchRecords() {
   loading.value = true
   try {
-    const params = {}
+    const params = {
+      student_id: studentStore.currentStudentId || undefined,
+    }
     if (subjectFilter.value) params.subject = subjectFilter.value
     if (searchTitle.value) params.title = searchTitle.value
     const res = await request.get('/v1/study-records', { params })
@@ -342,6 +347,7 @@ async function handleSave() {
     title: form.title,
     content: form.content,
     tags: tagsToString(form.tags),
+    student_id: studentStore.currentStudentId || undefined,
   }
 
   try {

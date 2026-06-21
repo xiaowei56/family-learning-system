@@ -106,8 +106,10 @@ import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Select, CircleCheckFilled } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
 
 // ─── 状态 ───
+const studentStore = useStudentStore()
 const loading = ref(false)
 const reviewData = ref(null)
 const masteringId = ref(null)
@@ -137,7 +139,7 @@ function subjectTagType(subject) {
 async function fetchReviews() {
   loading.value = true
   try {
-    const res = await request.get('/v1/reviews/today')
+    const res = await request.get('/v1/reviews/today', { params: { student_id: studentStore.currentStudentId || undefined } })
     reviewData.value = res?.data || res
   } catch (err) {
     console.error('获取今日复习失败:', err)

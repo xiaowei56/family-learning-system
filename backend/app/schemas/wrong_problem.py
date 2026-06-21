@@ -66,6 +66,11 @@ class SolutionResponse(BaseModel):
 class WrongProblemCreate(BaseModel):
     """创建错题请求体"""
 
+    student_id: Optional[str] = Field(
+        None,
+        description="所属学生 ID",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
     subject: str = Field(..., max_length=50, description="科目名称")
     knowledge_point: str = Field(..., max_length=200, description="知识点标签")
     problem_text: str = Field(..., description="题目原文")
@@ -95,6 +100,7 @@ class WrongProblemResponse(BaseModel):
 
     id: str = Field(..., description="错题 ID")
     user_id: str = Field(..., description="用户 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目")
     knowledge_point: str = Field(..., description="知识点")
     problem_text: str = Field(..., description="题目原文")

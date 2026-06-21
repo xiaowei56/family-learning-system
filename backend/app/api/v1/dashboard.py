@@ -6,11 +6,12 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.exam_result import ExamResult
 from app.models.study_record import ReviewSchedule, StudyRecord
 from app.models.user import User
@@ -36,10 +37,12 @@ router = APIRouter(tags=["仪表盘"])
     ),
 )
 def get_dashboard(
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DashboardResponse:
     """获取当前用户的仪表盘摘要数据。"""
+    verify_student_ownership(student_id, current_user, db)
 
     # ─── 今日复习 ────────────────────────────────────
     today = date.today()
@@ -54,6 +57,9 @@ def get_dashboard(
         .all()
     )
 
+    if student_id:
+        pending_schedules = [s for s in pending_schedules if str(s.student_id) == student_id]
+
     # 按科目去重统计
     subject_set: set[str] = set()
     for s in pending_schedules:
@@ -65,13 +71,16 @@ def get_dashboard(
     )
 
     # ─── 近期错题 ────────────────────────────────────
-    # WrongProblem 模型尚未实现，返回空数据
     recent_wrong = RecentWrong(total=0, items=[])
 
     # ─── 得分率摘要 ──────────────────────────────────
+    base_filter = [ExamResult.user_id == current_user.id]
+    if student_id:
+        base_filter.append(ExamResult.student_id == student_id)
+
     subjects_q = (
         db.query(ExamResult.subject)
-        .filter(ExamResult.user_id == current_user.id)
+        .filter(*base_filter)
         .distinct()
         .order_by(ExamResult.subject)
         .all()
@@ -85,6 +94,7 @@ def get_dashboard(
             .filter(
                 ExamResult.user_id == current_user.id,
                 ExamResult.subject == subject_name,
+                *(ExamResult.student_id == student_id if student_id else [])
             )
             .order_by(ExamResult.exam_date.desc())
             .first()

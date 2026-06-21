@@ -33,6 +33,13 @@ class StudyRecord(Base):
         index=True,
         comment="用户 ID",
     )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
+    )
     subject = Column(
         String(50),
         nullable=False,
@@ -102,6 +109,13 @@ class ReviewSchedule(Base):
         nullable=False,
         index=True,
         comment="关联学习记录 ID",
+    )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
     )
     review_date = Column(
         Date,

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.user import User
 from app.models.exam_paper import ExamPaper, PaperAnnotation
 from app.schemas.exam_paper import (
@@ -40,6 +40,7 @@ def _paper_to_response(p: ExamPaper) -> ExamPaperResponse:
         original_image_path=p.original_image_path,
         clean_image_path=p.clean_image_path,
         ocr_text=p.ocr_text,
+        student_id=str(p.student_id) if p.student_id else None,
         page_count=p.page_count,
         status=p.status,
         created_at=p.created_at,
@@ -59,12 +60,14 @@ def list_exam_papers(
     subject: Optional[str] = Query(None, description="科目筛选"),
     exam_type: Optional[str] = Query(None, description="考试类型"),
     status: Optional[str] = Query(None, description="状态筛选"),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExamPaperListResponse:
     """获取当前用户的试卷列表。"""
+    verify_student_ownership(student_id, current_user, db)
     query = db.query(ExamPaper).filter(ExamPaper.user_id == current_user.id)
 
     if subject:
@@ -73,6 +76,8 @@ def list_exam_papers(
         query = query.filter(ExamPaper.exam_type == exam_type)
     if status:
         query = query.filter(ExamPaper.status == status)
+    if student_id:
+        query = query.filter(ExamPaper.student_id == student_id)
 
     total = query.count()
     items = (
@@ -121,8 +126,10 @@ def create_exam_paper(
     current_user: User = Depends(get_current_user),
 ) -> ExamPaperResponse:
     """上传试卷图片并创建试卷记录。"""
+    verify_student_ownership(data.student_id, current_user, db)
     paper = ExamPaper(
         user_id=current_user.id,
+        student_id=data.student_id,
         subject=data.subject,
         title=data.title,
         exam_type=data.exam_type,

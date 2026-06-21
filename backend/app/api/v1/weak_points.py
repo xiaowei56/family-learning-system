@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.user import User
 from app.models.advanced_analysis import LearningAdvice, PracticePaper, WeakPoint
 from app.models.wrong_problem import WrongProblem
@@ -34,6 +34,7 @@ router = APIRouter(tags=["薄弱点分析"])
 def _weakpoint_to_response(w: WeakPoint) -> WeakPointResponse:
     return WeakPointResponse(
         id=str(w.id),
+        student_id=str(w.student_id) if w.student_id else None,
         subject=w.subject,
         knowledge_point=w.knowledge_point,
         mastery_level=w.mastery_level,
@@ -47,6 +48,7 @@ def _weakpoint_to_response(w: WeakPoint) -> WeakPointResponse:
 def _paper_to_response(p: PracticePaper) -> PracticePaperResponse:
     return PracticePaperResponse(
         id=str(p.id),
+        student_id=str(p.student_id) if p.student_id else None,
         subject=p.subject,
         title=p.title,
         questions=p.questions or [],
@@ -69,6 +71,7 @@ def _paper_to_response(p: PracticePaper) -> PracticePaperResponse:
 )
 def list_weak_points(
     subject: Optional[str] = Query(None, description="科目筛选"),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[WeakPointResponse]:
@@ -77,6 +80,10 @@ def list_weak_points(
 
     if subject:
         query = query.filter(WeakPoint.subject == subject)
+
+    verify_student_ownership(student_id, current_user, db)
+    if student_id:
+        query = query.filter(WeakPoint.student_id == student_id)
 
     items = query.order_by(WeakPoint.mastery_level.asc(), WeakPoint.wrong_count.desc()).all()
     return [_weakpoint_to_response(w) for w in items]
@@ -89,28 +96,27 @@ def list_weak_points(
     description="聚合错题和考试成绩数据，调用 LLM 生成综合分析报告。",
 )
 async def analyze_weak_points(
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WeakPointAnalysisResponse:
     """聚合错题和考试数据，进行 AI 薄弱点分析。"""
+    verify_student_ownership(student_id, current_user, db)
+
     # 1. 获取错题数据
-    wrong_problems = (
-        db.query(WrongProblem)
-        .filter(
-            WrongProblem.user_id == current_user.id,
-            WrongProblem.is_correct == 0,
-        )
-        .all()
+    wrong_query = db.query(WrongProblem).filter(
+        WrongProblem.user_id == current_user.id,
+        WrongProblem.is_correct == 0,
     )
+    if student_id:
+        wrong_query = wrong_query.filter(WrongProblem.student_id == student_id)
+    wrong_problems = wrong_query.all()
 
     # 2. 获取考试成绩
-    exam_results = (
-        db.query(ExamResult)
-        .filter(ExamResult.user_id == current_user.id)
-        .order_by(ExamResult.exam_date.desc())
-        .limit(50)
-        .all()
-    )
+    exam_query = db.query(ExamResult).filter(ExamResult.user_id == current_user.id)
+    if student_id:
+        exam_query = exam_query.filter(ExamResult.student_id == student_id)
+    exam_results = exam_query.order_by(ExamResult.exam_date.desc()).limit(50).all()
 
     # 3. 构建本地统计（按知识点聚合）
     from collections import defaultdict
@@ -209,6 +215,7 @@ async def analyze_weak_points(
 )
 def list_practice_papers(
     subject: Optional[str] = Query(None, description="科目筛选"),
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     db: Session = Depends(get_db),
@@ -219,6 +226,10 @@ def list_practice_papers(
 
     if subject:
         query = query.filter(PracticePaper.subject == subject)
+
+    verify_student_ownership(student_id, current_user, db)
+    if student_id:
+        query = query.filter(PracticePaper.student_id == student_id)
 
     total = query.count()
     items = (
@@ -268,6 +279,8 @@ async def generate_practice_paper(
     current_user: User = Depends(get_current_user),
 ) -> PracticePaperResponse:
     """基于薄弱知识点，调用 LLM 生成练习试卷。"""
+    verify_student_ownership(data.student_id, current_user, db)
+
     # 获取薄弱点数据
     weak_points = (
         db.query(WeakPoint)
@@ -314,6 +327,7 @@ async def generate_practice_paper(
     # 创建试卷记录
     paper = PracticePaper(
         user_id=current_user.id,
+        student_id=data.student_id,
         subject=data.subject,
         title=f"{data.subject}薄弱点专项练习 ({len(questions)}题)",
         questions=questions,
@@ -389,16 +403,17 @@ def delete_practice_paper(
     description="获取最近一次生成的综合性学习诊断报告。",
 )
 def get_latest_advice(
+    student_id: Optional[str] = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> LearningAdviceResponse:
     """获取最新的学习诊断报告。"""
-    advice = (
-        db.query(LearningAdvice)
-        .filter(LearningAdvice.user_id == current_user.id)
-        .order_by(LearningAdvice.created_at.desc())
-        .first()
-    )
+    verify_student_ownership(student_id, current_user, db)
+
+    query = db.query(LearningAdvice).filter(LearningAdvice.user_id == current_user.id)
+    if student_id:
+        query = query.filter(LearningAdvice.student_id == student_id)
+    advice = query.order_by(LearningAdvice.created_at.desc()).first()
     if not advice:
         raise HTTPException(status_code=404, detail="暂无学习诊断报告，请先执行薄弱点分析")
 

@@ -13,6 +13,11 @@ from pydantic import BaseModel, Field
 class StudyRecordCreate(BaseModel):
     """创建学习记录请求体"""
 
+    student_id: Optional[str] = Field(
+        None,
+        description="所属学生 ID",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
     subject: str = Field(
         ...,
         min_length=1,
@@ -66,6 +71,7 @@ class StudyRecordResponse(BaseModel):
     """学习记录响应体"""
 
     id: str = Field(..., description="学习记录 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目名称")
     title: str = Field(..., description="学习标题")
     content: str = Field(..., description="学习内容")

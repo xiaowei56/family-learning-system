@@ -177,6 +177,9 @@ import {
   Plus, Camera, MagicStick, Reading, Delete, ArrowDown, ArrowUp
 } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 // ─── 常量 ───
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
@@ -215,6 +218,7 @@ async function fetchProblems() {
     if (filterPoint.value) params.knowledge_point = filterPoint.value
     if (filterDifficulty.value != null) params.difficulty = filterDifficulty.value
     if (filterCorrect.value != null) params.is_correct = filterCorrect.value
+    params.student_id = studentStore.currentStudentId || undefined
     const res = await request.get('/v1/wrong-problems', { params })
     problems.value = res?.data?.items ?? res?.items ?? []
     total.value = res?.data?.total ?? res?.total ?? 0
@@ -286,7 +290,8 @@ async function handleAutoCollect() {
     const collectRes = await request.post('/v1/wrong-problems/auto-collect', {
       image_path: imagePath,
       subject: collectForm.subject,
-      knowledge_point: collectForm.knowledge_point
+      knowledge_point: collectForm.knowledge_point,
+      student_id: studentStore.currentStudentId || undefined
     })
     collectResult.value = collectRes?.data || collectRes
     ElMessage.success('错题收录成功！')

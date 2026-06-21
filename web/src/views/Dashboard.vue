@@ -193,8 +193,10 @@ import {
   DataAnalysis, EditPen, Link, Setting
 } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
 
 // ─── 状态 ───
+const studentStore = useStudentStore()
 const loading = ref(false)
 const dashboard = ref({})
 
@@ -202,7 +204,7 @@ const dashboard = ref({})
 async function fetchDashboard() {
   loading.value = true
   try {
-    const res = await request.get('/v1/dashboard')
+    const res = await request.get('/v1/dashboard', { params: { student_id: studentStore.currentStudentId || undefined } })
     dashboard.value = res?.data || res || {}
   } catch (err) {
     console.error('获取仪表盘数据失败:', err)

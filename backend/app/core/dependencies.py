@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.database import get_db
+from app.models.student import Student
 from app.models.user import User
 
 # ─── 密码加密 ────────────────────────────────────────
@@ -120,3 +121,31 @@ def get_current_user(
         )
 
     return user
+
+
+def verify_student_ownership(
+    student_id: str | None,
+    current_user: User,
+    db: Session,
+) -> Student | None:
+    """
+    验证学生是否属于当前用户。
+
+    如果 student_id 为 None，直接返回 None（不进行过滤）。
+    如果 student_id 不为 None 但学生不存在或不属于当前用户，抛出异常。
+    """
+    if student_id is None:
+        return None
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if student is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="学生档案不存在",
+        )
+    if str(student.user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="无权操作该学生的数据",
+        )
+    return student

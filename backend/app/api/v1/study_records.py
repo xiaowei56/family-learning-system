@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_student_ownership
 from app.models.study_record import ReviewSchedule, StudyRecord
 from app.models.user import User
 from app.schemas.study_record import (
@@ -41,12 +41,16 @@ reviews_router = APIRouter(prefix="/reviews", tags=["复习管理"])
     description="获取当前用户的学习记录列表，可按科目筛选，按创建时间倒序排列。",
 )
 def list_study_records(
+    student_id: str | None = Query(None, description="所属学生 ID 筛选"),
     subject: str | None = Query(None, description="科目名称筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[StudyRecordResponse]:
     """获取当前用户的学习记录列表。"""
+    verify_student_ownership(student_id, current_user, db)
     query = db.query(StudyRecord).filter(StudyRecord.user_id == current_user.id)
+    if student_id:
+        query = query.filter(StudyRecord.student_id == student_id)
     if subject:
         query = query.filter(StudyRecord.subject == subject)
     records = query.order_by(StudyRecord.created_at.desc()).all()
@@ -66,8 +70,10 @@ def create_study_record(
     current_user: User = Depends(get_current_user),
 ) -> StudyRecordResponse:
     """创建学习记录并自动生成复习排期。"""
+    verify_student_ownership(request.student_id, current_user, db)
     record = StudyRecord(
         user_id=current_user.id,
+        student_id=request.student_id,
         subject=request.subject,
         title=request.title,
         content=request.content,
@@ -82,6 +88,7 @@ def create_study_record(
     for i, review_date in enumerate(review_dates):
         schedule = ReviewSchedule(
             study_record_id=record.id,
+            student_id=record.student_id,
             review_date=review_date,
             review_count=i + 1,
             status="pending",
@@ -163,10 +170,12 @@ def delete_study_record(
     description="获取当前用户今日到期的复习安排，按科目分组返回。",
 )
 def get_today_reviews(
+    student_id: str | None = Query(None, description="所属学生 ID 筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DailyReviewResponse:
     """获取今日到期的复习安排，按科目分组。"""
+    verify_student_ownership(student_id, current_user, db)
     today = date.today()
 
     schedules = (
@@ -180,6 +189,8 @@ def get_today_reviews(
         .order_by(StudyRecord.subject, ReviewSchedule.review_date.asc())
         .all()
     )
+    if student_id:
+        schedules = [s for s in schedules if str(s.student_id) == student_id]
 
     # 按科目分组
     subject_groups: dict[str, list[ReviewRecordItem]] = {}
@@ -339,6 +350,7 @@ def _record_to_response(record: StudyRecord) -> StudyRecordResponse:
     """将 ORM StudyRecord 转换为响应体。"""
     return StudyRecordResponse(
         id=str(record.id),
+        student_id=str(record.student_id) if record.student_id else None,
         subject=record.subject,
         title=record.title,
         content=record.content,

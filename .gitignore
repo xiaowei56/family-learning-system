@@ -31,3 +31,9 @@ backend/alembic/__pycache__/*.pyc
 
 # Logs
 *.log
+
+# Playwright browser test artifacts
+.playwright-mcp/
+
+# OpenCode session continuation
+.omo/

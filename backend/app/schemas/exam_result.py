@@ -15,6 +15,11 @@ from pydantic import BaseModel, Field, model_validator
 class ExamResultCreate(BaseModel):
     """创建考试成绩请求体"""
 
+    student_id: Optional[str] = Field(
+        None,
+        description="所属学生 ID",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
     subject: str = Field(
         ...,
         min_length=1,
@@ -104,6 +109,7 @@ class ExamResultResponse(BaseModel):
 
     id: str = Field(..., description="考试成绩 ID")
     user_id: str = Field(..., description="所属用户 ID")
+    student_id: Optional[str] = Field(None, description="所属学生 ID")
     subject: str = Field(..., description="科目名称")
     exam_type: str = Field(..., description="考试类型")
     score: float = Field(..., description="得分")

@@ -227,6 +227,9 @@ import {
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import request from '@/api/index.js'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 // ============ 常量 ============
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
@@ -291,7 +294,8 @@ async function submitForm() {
       score: Number(form.score),
       total_score: Number(form.total_score),
       exam_date: form.exam_date,
-      notes: form.notes || ''
+      notes: form.notes || '',
+      student_id: studentStore.currentStudentId || undefined,
     })
     ElMessage.success('成绩保存成功')
     resetForm()
@@ -320,7 +324,9 @@ const filterExamType = ref('')
 async function fetchScoreList() {
   listLoading.value = true
   try {
-    const params = {}
+    const params = {
+      student_id: studentStore.currentStudentId || undefined,
+    }
     if (filterSubject.value) params.subject = filterSubject.value
     if (filterExamType.value) params.exam_type = filterExamType.value
     const res = await request.get('/v1/exam-results', { params })
@@ -395,7 +401,8 @@ async function fetchTrendData() {
   trendLoading.value = true
   try {
     const params = {
-      subjects: chartSubjects.value.join(',')
+      subjects: chartSubjects.value.join(','),
+      student_id: studentStore.currentStudentId || undefined,
     }
     if (chartExamType.value) params.exam_type = chartExamType.value
 

@@ -33,6 +33,13 @@ class WrongProblem(Base):
         index=True,
         comment="所属用户 ID",
     )
+    student_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="所属学生 ID",
+    )
     subject = Column(
         String(50),
         nullable=False,

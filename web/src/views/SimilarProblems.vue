@@ -121,6 +121,9 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { List, Reading, MagicStick, Select, Refresh, Clock } from '@element-plus/icons-vue'
 import request from '@/api'
+import { useStudentStore } from '@/stores/student'
+
+const studentStore = useStudentStore()
 
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治']
 
@@ -165,7 +168,8 @@ async function generateSimilar() {
       source_problem_id: selectedWp.value.id,
       subject: selectedWp.value.subject,
       knowledge_point: selectedWp.value.knowledge_point,
-      problem_text: selectedWp.value.problem_text
+      problem_text: selectedWp.value.problem_text,
+      student_id: studentStore.currentStudentId || undefined
     })
     const data = res?.data || res
     similarProblems.value.unshift({
@@ -208,7 +212,7 @@ function regenerate(sp, i) {
 
 async function fetchSavedProblems() {
   try {
-    const res = await request.get('/v1/similar-problems', { params: { page_size: 10 } })
+    const res = await request.get('/v1/similar-problems', { params: { page_size: 10, student_id: studentStore.currentStudentId || undefined } })
     savedProblems.value = res?.data?.items ?? res?.items ?? []
   } catch {
     savedProblems.value = []
